@@ -14,9 +14,12 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductEventProducer eventProducer;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository,
+                          ProductEventProducer eventProducer) {
         this.productRepository = productRepository;
+        this.eventProducer = eventProducer;
     }
 
     @Transactional
@@ -28,6 +31,17 @@ public class ProductService {
                 request.quantity()
         );
         Product saved = productRepository.save(product);
+
+        // Publish event AFTER the product is saved
+        eventProducer.publishProductCreated(
+                ProductEventProducer.from(
+                        saved.getId(),
+                        saved.getName(),
+                        saved.getPrice(),
+                        saved.getQuantity()
+                )
+        );
+
         return toResponse(saved);
     }
 
